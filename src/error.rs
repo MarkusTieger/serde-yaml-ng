@@ -104,6 +104,24 @@ impl Error {
     }
 }
 
+#[allow(clippy::fallible_impl_from)]
+impl From<Error> for io::Error {
+    /// Convert a `serde_yaml_ng::Error` into an `io::Error`.
+    ///
+    /// YAML syntax and data errors are turned into `InvalidData` I/O errors.
+    /// EOF errors are turned into `UnexpectedEof` I/O errors.
+    fn from(j: Error) -> Self {
+        if let ErrorImpl::Io(err) = *j.0 {
+            err
+        } else {
+            match *j.0 {
+                ErrorImpl::EndOfStream => io::Error::new(io::ErrorKind::UnexpectedEof, j),
+                _ => io::Error::new(io::ErrorKind::InvalidData, j),
+            }
+        }
+    }
+}
+
 pub(crate) fn new(inner: ErrorImpl) -> Error {
     Error(Box::new(inner))
 }
